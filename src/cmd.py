@@ -228,13 +228,13 @@ class NewInteractiveShell:
             except (EOFError, KeyboardInterrupt):
                 return
 
-   async def start(self, args):
-        try:
-            await self.command_parser(' '.join(args))
-        except (EOFError, KeyboardInterrupt):
-            return
-        finally:
-            logger.info("Existing shell")
+     async def start(self, args):
+         try:
+             await self.command_parser(' '.join(args))
+         except (EOFError, KeyboardInterrupt):
+             return
+         finally:
+             logger.info("Existing shell")
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
