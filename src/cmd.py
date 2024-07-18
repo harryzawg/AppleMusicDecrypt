@@ -6,7 +6,7 @@ from asyncio import Task
 
 from loguru import logger
 from prettytable import PrettyTable
-from prompt_toolkit import PromptSession, print_formatted_text, ANSI
+from prompt_toolkit import print_formatted_text, ANSI
 from prompt_toolkit.patch_stdout import patch_stdout
 
 from src.adb import Device
@@ -32,7 +32,7 @@ class NewInteractiveShell:
     def __init__(self, loop: asyncio.AbstractEventLoop):
         dep_installed, missing_dep = check_dep()
         if not dep_installed:
-            logger.error(f"Dependence {missing_dep} was not installed!")
+            logger.error(f"Dependency {missing_dep} was not installed!")
             loop.stop()
             sys.exit()
 
@@ -54,8 +54,8 @@ class NewInteractiveShell:
         download_from_file_parser.add_argument("file", type=str)
         download_from_file_parser.add_argument("-f", "--force", default=False, action="store_true")
         download_from_file_parser.add_argument("-c", "--codec",
-                                     choices=["alac", "ec3", "aac", "aac-binaural", "aac-downmix", "ac3"],
-                                     default="alac")
+                                               choices=["alac", "ec3", "aac", "aac-binaural", "aac-downmix", "ac3"],
+                                               default="alac")
         m3u8_parser = subparser.add_parser("m3u8")
         m3u8_parser.add_argument("url", type=str)
         m3u8_parser.add_argument("-c", "--codec",
@@ -151,7 +151,7 @@ class NewInteractiveShell:
         with open(file, "r", encoding="utf-8") as f:
             urls = f.readlines()
         for url in urls:
-            task = self.loop.create_task(self.do_download(raw_url=url, codec=codec, force_download=force_download))
+            task = self.loop.create_task(self.do_download(raw_url=url.strip(), codec=codec, force_download=force_download))
             self.tasks.append(task)
             task.add_done_callback(self.tasks.remove)
 
@@ -228,13 +228,14 @@ class NewInteractiveShell:
             except (EOFError, KeyboardInterrupt):
                 return
 
-     async def start(self, args):
-         try:
-             await self.command_parser(' '.join(args))
-         except (EOFError, KeyboardInterrupt):
-             return
-         finally:
-             logger.info("Existing shell")
+    async def start(self, args):
+        try:
+            await self.command_parser(' '.join(args))
+        except (EOFError, KeyboardInterrupt):
+            return
+        finally:
+            logger.info("Exiting shell")
+
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
