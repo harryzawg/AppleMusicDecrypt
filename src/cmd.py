@@ -228,21 +228,24 @@ class NewInteractiveShell:
             except (EOFError, KeyboardInterrupt):
                 return
 
-    async def start(self, args):
-        try:
-            await self.command_parser(' '.join(args))
-        except (EOFError, KeyboardInterrupt):
-            return
-        finally:
-            logger.info("Exiting shell")
-
+    async def start(self, args: list[str] = None):
+        with patch_stdout():
+            try:
+                if args:
+                    for arg in args:
+                        await self.command_parser(arg)
+                    self.loop.stop()
+                    sys.exit()
+                else:
+                    await self.handle_command()
+            finally:
+                logger.info("Existing shell")
+            logger.error("No command provided")
+            loop.stop()
+            sys.exit()
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     shell = NewInteractiveShell(loop)
-    if len(sys.argv) > 1:
-        loop.run_until_complete(shell.start(sys.argv[1:]))
-    else:
-        logger.error("No command provided")
-        loop.stop()
-        sys.exit()
+    loop.run_until_complete(shell.start(sys.argv[1:]))
+    loop.close()
