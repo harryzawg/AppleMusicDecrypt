@@ -6,7 +6,7 @@ from asyncio import Task
 
 from loguru import logger
 from prettytable import PrettyTable
-from prompt_toolkit import print_formatted_text, ANSI
+from prompt_toolkit import PromptSession, print_formatted_text, ANSI
 from prompt_toolkit.patch_stdout import patch_stdout
 
 from src.adb import Device
@@ -32,7 +32,7 @@ class NewInteractiveShell:
     def __init__(self, loop: asyncio.AbstractEventLoop):
         dep_installed, missing_dep = check_dep()
         if not dep_installed:
-            logger.error(f"Dependency {missing_dep} was not installed!")
+            logger.error(f"Dependence {missing_dep} was not installed!")
             loop.stop()
             sys.exit()
 
@@ -151,7 +151,7 @@ class NewInteractiveShell:
         with open(file, "r", encoding="utf-8") as f:
             urls = f.readlines()
         for url in urls:
-            task = self.loop.create_task(self.do_download(raw_url=url.strip(), codec=codec, force_download=force_download))
+            task = self.loop.create_task(self.do_download(raw_url=url, codec=codec, force_download=force_download))
             self.tasks.append(task)
             task.add_done_callback(self.tasks.remove)
 
@@ -184,68 +184,45 @@ class NewInteractiveShell:
                     f"Available audio qualities for song: {song_metadata.artist} - {song_metadata.title}:")
                 print_formatted_text(table)
             case URLType.Album:
-                album_info = await get_album_info(url.id, global_auth_param.anonymousAccessToken, url.storefront,
-                                                  self.config.region.language)
-                for track in album_info.data[0].relationships.tracks.data:
-                    song = Song(id=track.id, storefront=url.storefront, url="", type=URLType.Song)
-                    try:
-                        song_metadata, audio_qualities = await get_available_song_audio_quality(song, self.config,
-                                                                                                global_auth_param,
-                                                                                                available_device)
-                    except CodecNotFoundException:
-                        return
+                album_info = await get_album_info(url, self.config, global_auth_param)
+                songs = album_info.tracks
+                for song_metadata, audio_qualities in songs:
                     table = PrettyTable(
                         field_names=["Codec ID", "Codec", "Bitrate", "Average Bitrate", "Channels", "Sample Rate",
                                      "Bit Depth"])
+                    audio_qualities.sort(key=lambda x: x.bitrate, reverse=True)
                     table.add_rows([list(audio_quality.model_dump().values()) for audio_quality in audio_qualities])
-                    print_formatted_text(
-                        f"Available audio qualities for song: {song_metadata.artist} - {song_metadata.title}:")
+                    print_formatted_text(f"Available audio qualities for song: {song_metadata.artist} - {song_metadata.title}:")
                     print_formatted_text(table)
-            case _:
-                logger.error("Unsupported link!")
 
-    async def _get_available_device(self, storefront: str):
-        devices = self.storefront_device_mapping.get(storefront)
-        if not devices:
-            logger.warning(f"No device is available to decrypt the specified region: {storefront.upper()}. "
-                           f"Use storefront {self.config.region.defaultStorefront.upper()} to decrypt")
-            storefront = self.config.region.defaultStorefront
-            devices = self.storefront_device_mapping.get(storefront)
-        available_devices = [device for device in devices if not device.decryptLock.locked()]
-        if not available_devices:
-            available_device: Device = random.choice(devices)
-        else:
-            available_device: Device = random.choice(available_devices)
-        return available_device
+    async def _get_available_device(self, storefront: str) -> Device:
+        if not self.storefront_device_mapping.get(storefront.lower()):
+            storefront = "us"
+        devices = self.storefront_device_mapping.get(storefront.lower())
+        random.shuffle(devices)
+        return devices[0]
 
-    async def handle_command(self):
-        session = PromptSession("> ")
+    def handle_command_line_args(self):
+        if len(sys.argv) > 1:
+            cmd = ' '.join(sys.argv[1:])
+            self.loop.run_until_complete(self.command_parser(cmd))
 
-        while True:
-            try:
-                command = await session.prompt_async()
-                await self.command_parser(command)
-            except (EOFError, KeyboardInterrupt):
-                return
+    def start(self):
+        self.handle_command_line_args()
+        session = PromptSession()
 
-    async def start(self, args: list[str] = None):
         with patch_stdout():
-            try:
-                if args:
-                    for arg in args:
-                        await self.command_parser(arg)
-                    self.loop.stop()
-                    sys.exit()
-                else:
-                    await self.handle_command()
-            finally:
-                logger.info("Existing shell")
-            logger.error("No command provided")
-            loop.stop()
-            sys.exit()
+            while True:
+                try:
+                    text = self.loop.run_until_complete(session.prompt_async("> "))
+                    self.loop.run_until_complete(self.command_parser(text))
+                except KeyboardInterrupt:
+                    continue
+                except EOFError:
+                    break
+
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     shell = NewInteractiveShell(loop)
-    loop.run_until_complete(shell.start(sys.argv[1:]))
-    loop.close()
+    shell.start()
