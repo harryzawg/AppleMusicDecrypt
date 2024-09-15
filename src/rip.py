@@ -28,7 +28,8 @@ task_lock = asyncio.Semaphore(16)
 @timeit
 @retry(retry=retry_if_exception_type(SongNotPassIntegrityCheckException), stop=stop_after_attempt(1))
 async def rip_song(song: Song, auth_params: GlobalAuthParams, codec: str, config: Config, device: Device,
-                   force_save: bool = False, specified_m3u8: str = "", playlist: PlaylistInfo = None):
+                   force_save: bool = False, specified_m3u8: str = "", playlist: PlaylistInfo = None,
+                   is_album: bool = False, is_single: bool = False):
     async with task_lock:
         logger.debug(f"Task of song id {song.id} was created")
         token = auth_params.anonymousAccessToken
@@ -122,6 +123,11 @@ async def rip_song(song: Song, auth_params: GlobalAuthParams, codec: str, config
             command = config.download.afterDownloaded.format(filename=filename)
             logger.info(f"Executing command: {command}")
             subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # Check if it's the last song in the album or if it's a single
+        if is_single or (is_album and all_album_songs_processed):
+            logger.info("All songs processed. Closing the script.")
+            sys.exit()
 
 
 @logger.catch
