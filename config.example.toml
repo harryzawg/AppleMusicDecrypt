@@ -1,17 +1,17 @@
 [region]
 # Used when the song region cannot be obtained, currently only used for m3u8 command and mitm command
 # Recommend value: Your Apple Music's subscription region
-defaultStorefront = "jp"
+defaultStorefront = "TR"
 # The language of song metadata. Influence song title, author and other information.
 # Simplified Chinese: zh-Hans-CN, Tradidional Chinese(Hong Kong): zh-Hant-HK, Tradidional Chinese(Taiwan): zh-Hant-TW
 # English(British): en-GB, English(American): en-US, Japanese: ja, Korean: ko
-language = "zh-Hans-CN"
+language = "en-US"
 
 [[devices]]
 # ADB service host of Android device
 host = "127.0.0.1"
 # ADB service port of Android device
-port = 58526
+port = 5555
 # For decryption service. This value should not be repeated when using multiple devices
 agentPort = 10020
 # The method the script executes commands with Root permissions
@@ -102,5 +102,5 @@ afterDownloaded = ""
 # record_company, upc, isrc, copyright,
 # lyrics, cover, ratings(rtng)
 embedMetadata = ["title", "artist", "album", "album_artist", "composer",
-    "genre", "created", "track", "tracknum", "disk", "lyrics", "cover", "copyright",
+    "genre", "created", "track", "tracknum", "totaltracks", "tracktotal", "totalnum", "disk", "lyrics", "cover", "copyright",
     "record_company", "upc", "isrc", "rtng"]
