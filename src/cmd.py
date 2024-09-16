@@ -106,8 +106,6 @@ class NewInteractiveShell:
                 self.loop.stop()
                 sys.exit()
 
-        self.loop.stop()
-
     async def do_download(self, raw_url: str, codec: str, force_download: bool, include: bool = False):
         url = AppleMusicURL.parse_url(raw_url)
         if not url:
@@ -209,23 +207,19 @@ class NewInteractiveShell:
             cmd = ' '.join(sys.argv[1:])
             self.loop.run_until_complete(self.command_parser(cmd))
 
-def start(self):
-    self.handle_command_line_args()
-    session = PromptSession()
+    def start(self):
+        self.handle_command_line_args()
+        session = PromptSession()
 
-    with patch_stdout():
-        try:
-            # Read a single command from the prompt asynchronously
-            text = self.loop.run_until_complete(session.prompt_async("> "))
-            # Make sure to await the command_parser since it's an async function
-            self.loop.run_until_complete(self.command_parser(text))
-        except KeyboardInterrupt:
-            pass
-        except EOFError:
-            pass
-        finally:
-            # After handling the first command, stop the event loop
-            self.loop.stop()
+        with patch_stdout():
+            while True:
+                try:
+                    text = self.loop.run_until_complete(session.prompt_async("> "))
+                    self.loop.run_until_complete(self.command_parser(text))
+                except KeyboardInterrupt:
+                    continue
+                except EOFError:
+                    break
 
 
 if __name__ == "__main__":
